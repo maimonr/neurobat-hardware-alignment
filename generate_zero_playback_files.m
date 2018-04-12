@@ -35,10 +35,8 @@ function generate_zero_playback_files(varargin)
 
 % This function takes the following input specified as ('parameter1',
 % value1, 'parameter2', value2...)
-% Input:    'FS':   nominal sampling rate of player (avisoft: 1e6Hz; Motu
-%                       soundcard: 192000Hz ), default = 1e6Hz
-%               'FS_offset':    set to 93 for actual avisoft playback rate
-%                                   of 1000093, default = 0;
+% Input:    'FS':   nominal sampling rate of player (avisoft: 1,000,093Hz; Motu
+%                       soundcard: 192000Hz ), default = 1,000,093Hz
 %               'TotalDuration':   total time covered by playback files, start to finish in hours
 %                                           default: 1h
 %               'FileDuration':     time covered by a single wav file in hours, set to 0.1 (6min) by default
@@ -50,13 +48,14 @@ function generate_zero_playback_files(varargin)
 %               
 %%%
 
+FIG=1; % set to 1 to see debugging plot
+
 %% Determining input arguments
 % Sorting input arguments
-Pnames = {'FS','FS_offset','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode'};
+Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode'};
 
 % Calculating default values of input arguments
-Fs=1e6; % nominal sampling rate of player (avisoft: 1e6Hz; Motu soundcard: 192000Hz );
-Nom_fs_offset = 0; % set to 93 for actual avisoft playback rate of 1000093
+FS=1000093; % nominal sampling rate of player (avisoft: 1 000 093Hz; Motu soundcard: 192000Hz );
 TotalDuration = 1; % total time covered by playback files, start to finish in hours
 FileDuration = 0.1; % time covered by a single wav file in hours, set to 6min by default
 IPTI = 5; % Time in seconds between 2 pulse train onsets  
@@ -64,30 +63,26 @@ IPI = 15; % Time in ms between 2 pulses in a pulse train  (set to 15ms due to De
 TTLCode = 'LSB'; % How the TTL should be encoded LSB = last significant beat (avisoft configuration) Value = exact wav vector value (matlab-soundmexpro-motu configuration)
 
 % Get input arguments
-Dflts  = {Fs Nom_fs_offset TotalDuration FileDuration IPTI IPI TTLCode};
-[Fs, Nom_fs_offset, TotalDuration, FileDuration, IPTI, IPI, TTLCode] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
-
-% Find out the right sampling rate correction that could need to be done at the
-% end
-if Nom_fs_offset
-    actual_fs = Fs + Nom_fs_offset;
-    [p,q] = rat(actual_fs / Fs); % determine integers at which we can approximately resample data from 'fs' to 'actual_fs' such that the resulting playback files are played back at the actual fs, the playback is correct
-end
+Dflts  = {FS TotalDuration FileDuration IPTI IPI TTLCode};
+[FS, TotalDuration, FileDuration, IPTI, IPI, TTLCode] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
 
 % Defining the number of files and their length
-TotalDuration_samp = TotalDuration*3600*Fs; 
-FileDuration_samp = FileDuration*3600*Fs; % # samples on an individual playback files
+TotalDuration_samp = TotalDuration*3600*FS; 
+FileDuration_samp = FileDuration*3600*FS; % # samples on an individual playback files
 N_chunk = ceil(TotalDuration_samp/FileDuration_samp); % number of files to be produced
 
 % Defining pulse shapes and numbers per file
-Base_ttl_length = Fs*1e-3; % maximum resolution of Deuteron loggers is 1ms
-Min_ttl_length  = 5; % set to 5ms due to Deuteron hardware limitations
-IPTI_samp = IPTI*Fs; % interval between pulse trains in sample units
-PulseTrain_position = 0:IPTI_samp:FileDuration_samp; % exact position of pulse trains in sample units
-PulseTrain_position = PulseTrain_position(1:end-1); % discarding the last pulse train that most likely would not have time to finish
-IPI_samp = IPI*Fs*1e-3; % interval between pulses within individual pulse trains in sample units
-N_pulse_per_chunk = length(PulseTrain_position); % number of pulse trains in a file
 N_ttl_digits = 5; % maximum number of digits in a pulse (i.e. up to 10,000 pulses)
+Base_ttl_length = ceil(FS*1e-3); % maximum resolution of Deuteron loggers is 1ms, we want a number of samples that corresponds at least to 1ms
+Min_ttl_length  = 5; % set to 5ms due to Deuteron hardware limitations
+IPTI_samp = IPTI*FS; % interval between pulse trains in sample units
+IPI_samp = IPI*Base_ttl_length; % interval between pulses within individual pulse trains in sample units
+PulseTrain_position = 1:IPTI_samp:FileDuration_samp; % exact position of pulse trains in sample units
+if PulseTrain_position(end)>=(FileDuration_samp - N_ttl_digits*(IPI_samp + (Min_ttl_length+9)*Base_ttl_length))
+    PulseTrain_position = PulseTrain_position(1:(end-1)); % discarding the last pulse train that most likely would not have time to be fully encoded
+end
+N_pulse_per_chunk = length(PulseTrain_position); % number of pulse trains in a file
+
 
 
 %% Constructing pulse sequences
@@ -98,6 +93,7 @@ for chunk = 1:N_chunk % loop through each file or 'chunk'
     if strcmp(TTLCode, 'LSB')
         Wav_file = bitset(Wav_file,1,1); % setting all first digits to 1
     elseif strcmp(TTLCode, 'Value')
+        % we keep the wavfile as is
     else
         error('Format of TTL encoding is unknown:%s\nTTLCode should be set to LSB or Value\n', TTLCode);
     end
@@ -105,12 +101,12 @@ for chunk = 1:N_chunk % loop through each file or 'chunk'
     for pulse = 1:N_pulse_per_chunk  % code each pulse train separately
         Pulse_offset = PulseTrain_position(pulse); % total amount of time taken up by the previous pulse trains and ipti's (inter pulse train interval) and other pulses already within this pulse train
         d = 1; % which digit are we on
-        while d <= N_ttl_digits % max pulse = 10,0000
+        while d <= N_ttl_digits % max pulse = 99,999
             if pulse_k/(10^(d-1))>=1 % determine the total number of digits we need for this number
                 Pulse_offset = Pulse_offset+ IPI_samp; % always add IPI_samp in front of each digit
                 pulse_digit_str = num2str(pulse_k); % convert pulse number to string to separate out digits
                 pulse_digit = str2double(pulse_digit_str(d)); % convert the digit we are encoding now back to a number
-                digit_pulse = ones(Base_ttl_length*pulse_digit+(Min_ttl_length*Base_ttl_length));
+                digit_pulse = ones(1,Base_ttl_length*(pulse_digit+Min_ttl_length));
                 if strcmp(TTLCode, 'Value')
                     Wav_file(Pulse_offset : (Pulse_offset + length(digit_pulse) -1)) = digit_pulse; % pulse is encoded as TTL 'high'
                 elseif strcmp(TTLCode, 'LSB')
@@ -125,10 +121,28 @@ for chunk = 1:N_chunk % loop through each file or 'chunk'
         pulse_k = pulse_k + 1;
     end
     
-    
-    if Nom_fs_offset
-        Wav_file = int16(resample(Wav_file,p,q)); % resample the data to the actual fs and convert to 16 bit integers
+    if strcmp(TTLCode, 'LSB') && FIG
+        plot(bitget(Wav_file,1))
+        xticks(0:FS*60:length(Wav_file))
+        xticklabels(0:1:(length(Wav_file)/(FS*60)))
+        xlabel('Time in min')
+        ylabel('bit value')
+        ylim([-0.5 1.5])
+        Wav_file = int16(Wav_file); % convert to signed 16-bit integers
+        pause(1)
+    elseif strcmp(TTLCode, 'Value') && FIG
+        plot(Wav_file)
+        xticks(0:FS*60:length(Wav_file))
+        xticklabels(0:1:(length(Wav_file)/(FS*60)))
+        xlabel('Time in min')
+        ylabel('sound pressure')
+        ylim([-0.5 1.5])
+        pause(1)
+    elseif strcmp(TTLCode, 'LSB') && ~FIG
+        Wav_file = int16(Wav_file); % convert to signed 16-bit integers
     end
-    audiowrite(['unique_ttl' num2str(chunk) '.wav'],Wav_file,Fs); % save as a .WAV file
+    
+  
+    audiowrite(['unique_ttl' num2str(chunk) '.wav'],Wav_file,FS); % save as a .WAV file
 end
 end
