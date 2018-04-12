@@ -48,7 +48,7 @@ function generate_zero_playback_files(varargin)
 %               
 %%%
 
-FIG=1; % set to 1 to see debugging plot
+FIG=0; % set to 1 to see debugging plot
 
 %% Determining input arguments
 % Sorting input arguments
