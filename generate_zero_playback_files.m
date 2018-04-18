@@ -54,7 +54,7 @@ FIG=0; % set to 1 to see debugging plot
 
 %% Determining input arguments
 % Sorting input arguments
-Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode', 'Path'};
+Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode', 'Path', 'Stereo'};
 
 % Calculating default values of input arguments
 FS=1000093; % nominal sampling rate of player (avisoft: 1 000 093Hz; Motu soundcard: 192000Hz );
@@ -67,7 +67,7 @@ Out_Path = pwd;
 
 % Get input arguments
 Dflts  = {FS TotalDuration FileDuration IPTI IPI TTLCode Out_Path};
-[FS, TotalDuration, FileDuration, IPTI, IPI, TTLCode Out_Path] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
+[FS, TotalDuration, FileDuration, IPTI, IPI, TTLCode, Out_Path] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
 
 % Defining the number of files and their length
 TotalDuration_samp = TotalDuration*3600*FS; 
