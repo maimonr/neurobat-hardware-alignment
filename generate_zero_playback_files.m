@@ -45,6 +45,8 @@ function generate_zero_playback_files(varargin)
 %               'InterPulseInterval': Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
 %               'TTLCode':  A string indicating how the TTL should be encoded. 'LSB' = last significant beat (avisoft configuration)
 %                                   'Value' = exact wav vector value (matlab-soundmexpro-motu configuration)
+%               'Path':     A sting indicating where the wav files should be
+%                              generated. Default=pwd
 %               
 %%%
 
@@ -52,7 +54,7 @@ FIG=0; % set to 1 to see debugging plot
 
 %% Determining input arguments
 % Sorting input arguments
-Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode'};
+Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode', 'Path'};
 
 % Calculating default values of input arguments
 FS=1000093; % nominal sampling rate of player (avisoft: 1 000 093Hz; Motu soundcard: 192000Hz );
@@ -61,10 +63,11 @@ FileDuration = 6; % time covered by a single wav file in mins, set to 6min by de
 IPTI = 5; % Time in seconds between 2 pulse train onsets  
 IPI = 15; % Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
 TTLCode = 'LSB'; % How the TTL should be encoded LSB = last significant beat (avisoft configuration) Value = exact wav vector value (matlab-soundmexpro-motu configuration)
+Out_Path = pwd;
 
 % Get input arguments
-Dflts  = {FS TotalDuration FileDuration IPTI IPI TTLCode};
-[FS, TotalDuration, FileDuration, IPTI, IPI, TTLCode] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
+Dflts  = {FS TotalDuration FileDuration IPTI IPI TTLCode Out_Path};
+[FS, TotalDuration, FileDuration, IPTI, IPI, TTLCode Out_Path] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
 
 % Defining the number of files and their length
 TotalDuration_samp = TotalDuration*3600*FS; 
@@ -143,6 +146,6 @@ for chunk = 1:N_chunk % loop through each file or 'chunk'
     end
     
   
-    audiowrite(['unique_ttl' num2str(chunk) '.wav'],Wav_file,FS); % save as a .WAV file
+    audiowrite(fullfile(Out_Path,['unique_ttl' num2str(chunk) '.wav']),Wav_file,FS); % save as a .WAV file
 end
 end
