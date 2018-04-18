@@ -39,7 +39,7 @@ function generate_zero_playback_files(varargin)
 %                       soundcard: 192000Hz ), default = 1,000,093Hz
 %               'TotalDuration':   total time covered by playback files, start to finish in hours
 %                                           default: 1h
-%               'FileDuration':     time covered by a single wav file in hours, set to 0.1 (6min) by default
+%               'FileDuration':     time covered by a single wav file in min, set to 6min by default
 %               'InterPulseTrainInterval': Time in seconds between 2 pulse
 %                                                       train onsets, default value set at 15s
 %               'InterPulseInterval': Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
@@ -57,7 +57,7 @@ Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'Inte
 % Calculating default values of input arguments
 FS=1000093; % nominal sampling rate of player (avisoft: 1 000 093Hz; Motu soundcard: 192000Hz );
 TotalDuration = 1; % total time covered by playback files, start to finish in hours
-FileDuration = 0.1; % time covered by a single wav file in hours, set to 6min by default
+FileDuration = 6; % time covered by a single wav file in mins, set to 6min by default
 IPTI = 5; % Time in seconds between 2 pulse train onsets  
 IPI = 15; % Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
 TTLCode = 'LSB'; % How the TTL should be encoded LSB = last significant beat (avisoft configuration) Value = exact wav vector value (matlab-soundmexpro-motu configuration)
@@ -68,7 +68,7 @@ Dflts  = {FS TotalDuration FileDuration IPTI IPI TTLCode};
 
 % Defining the number of files and their length
 TotalDuration_samp = TotalDuration*3600*FS; 
-FileDuration_samp = FileDuration*3600*FS; % # samples on an individual playback files
+FileDuration_samp = FileDuration*60*FS; % # samples on an individual playback files
 N_chunk = ceil(TotalDuration_samp/FileDuration_samp); % number of files to be produced
 
 % Defining pulse shapes and numbers per file
