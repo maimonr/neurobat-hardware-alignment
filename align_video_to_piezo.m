@@ -51,7 +51,7 @@ correct_loop = true;
 save_options_parameters_CD_figure = 1;
 %%%
 
-video_dir = [base_dir 'video\Camera '  num2str(cameraNum) filesep];
+video_dir = [base_dir 'video' filesep 'Camera '  num2str(cameraNum) filesep];
 
 video_files = dir([video_dir '*.mp4']);
 n_video_files = length(video_files);
@@ -69,7 +69,7 @@ eventMarkers = [eventMarkers{:}];
 [video_pulse, video_pulse_times] = video_ttl2pulses(eventMarkers,ttl_pulse_dt/1e3);
 %%
 
-eventfile = [base_dir 'piezo_data\logger' num2str(logger_num) filesep 'EVENTS.mat']; % load file with TTL status info
+eventfile = [base_dir 'piezo_data' fiesep 'logger' num2str(logger_num) filesep 'EVENTS.mat']; % load file with TTL status info
 load(eventfile);
 
 session_start_and_end = zeros(1,2);
