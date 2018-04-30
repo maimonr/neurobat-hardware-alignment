@@ -148,4 +148,10 @@ for chunk = 1:N_chunk % loop through each file or 'chunk'
   
     audiowrite(fullfile(Out_Path,['unique_ttl' num2str(chunk) '.wav']),Wav_file,FS); % save as a .WAV file
 end
+
+%% Saving parameters to unique_ttl_params.mat
+% Set up the date
+Today = datestr(now, 'yymmdd_HHMM');
+save(fullfile(Out_Path, [Today 'unique_ttl_params.mat']), 'FS', 'TotalDuration', 'FileDuration', 'IPTI', 'IPI','TTLCode', 'Min_ttl_length', 'Base_ttl_length', 'N_ttl_digits');
+            
 end

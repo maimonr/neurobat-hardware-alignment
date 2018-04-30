@@ -53,20 +53,20 @@ function [pulse_idx, pulse_time, err_pulses] = ttl_times2pulses(times,pulse_dt,c
 % together to form the digits of the pulse number we are decoding. 
 % E.G. :
 % 5s after the last pulse we see a set of TTL status change times spaced by
-% 6, 15, 7, 15, and 13 ms. We look at every second number and subtract 5,
+% 6, 15, 7, 15, and 13 ms. We look at every other number (odd indices) and subtract 5,
 % arriving at 1,2,8 which stands for the 128th pulse in sequence. The time
 % when the 6ms long pulse arrived is stored as the 'pulse_time'
 % correspoding to the element of 'pulse_idx' stored as 128. 
 %
-% Maimon Rose 9/2/16
+% Maimon Rose 9/2/16, further comented by Julie E Elie
 %%%
 manual_bad_err_corr = 1;
 check_loop_twice = 0;
 unique_ttls_dir = 'C:\Users\phyllo\Documents\Maimon\misc\nlg_alignment\unique_ttls\';
 ttl_diffs = diff(times);
-chunk_times = [times(1) times(ttl_diffs>pulse_dt) times(1)];
-diffs_chunk = ttl_diffs(ttl_diffs>pulse_dt);
-chunks = cell(1,length(diffs_chunk));
+chunk_times = [times(1) times(ttl_diffs>pulse_dt) times(1)]; % time points that are at the end of each TTL pulse train WHY times(1) at the end??
+diffs_chunk = ttl_diffs(ttl_diffs>pulse_dt); % durations of all inter-pulse train intervals in the recording
+chunks = cell(1,length(diffs_chunk)); % will contain all the time point of TTL status change for each the set of (inter-pulse train interval + pulse train)
 
 if ~isempty(varargin)
     out_of_order_correction = varargin{1};
@@ -75,23 +75,27 @@ else
     out_of_order = 0;
 end
 
-for chunk = 1:length(diffs_chunk)
+%% Loop through detected  sets of (inter-pulse train interval + pulse train) and retrieve pulse index
+for chunk = 1:length(diffs_chunk) % we could potentially miss the last TTL pulse if there was less than 4s of recording after it?
     chunk_on = chunk_times(chunk);
-    chunk_off = chunk_times(chunk+1) + 1;
+    chunk_off = chunk_times(chunk+1) + 1; % This +1ms could be replaced by <= in the following lines: (times<=chunk_off)?
     if chunk == 1
         chunks{chunk} = times((times>=chunk_on) & (times<chunk_off));
     else
         chunks{chunk} = times((times>chunk_on) & (times<chunk_off));
     end
 end
-pulse_time = cellfun(@(x) x(1),chunks);
-display(sum(~ismember(pulse_time,times)))
-chunk_diffs = cellfun(@(x) round(diff(x)),chunks,'UniformOutput',0);
-pulse_idx = cellfun(@(x) str2double(regexprep(num2str((x(1:2:length(x)) - 5)),'[^\w'']','')),chunk_diffs);
-pulse_idx_orig = pulse_idx;
+pulse_time = cellfun(@(x) x(1),chunks); % time of first rising edge in each pulse train
+display(sum(~ismember(pulse_time,times))) % display if these time points do not belong to the times where TTL status changed was detected
+chunk_diffs = cellfun(@(x) round(diff(x)),chunks,'UniformOutput',0); % durations between each raising or falling edges in the pulse train
+pulse_idx = cellfun(@(x) str2double(regexprep(num2str(x(1:2:length(x)) - 5),'[^\w'']','')),chunk_diffs); % Pulse indices
+pulse_idx_orig = pulse_idx; % save these pulses indices before applying further checks
 
-err_pulses = intersect(find(pulse_idx-[pulse_idx(1)-1 pulse_idx(1:end-1)]~=1),... find pulses which 'stick out' from both neighboring pulses
+%% Deal with errors of TTL pulses detection
+err_pulses = intersect(find(pulse_idx - [pulse_idx(1)-1 pulse_idx(1:end-1)]~=1),... find pulses which 'stick out' from both neighboring pulses
                        find(pulse_idx-[pulse_idx(2:end) pulse_idx(end)+1]~=-1));
+ % Should be find(diff(pulse_idx) ~= 1)) if we want to find any
+ % discrepancy...
 if correct_end_off % end of 'zero signal' TTL file may have erroneous TTL pulse at end, correct if so
     load([unique_ttls_dir 'unique_ttl_params.mat'],'n_pulse_per_chunk');
     end_offs = err_pulses(rem(pulse_idx(err_pulses-1),n_pulse_per_chunk)==0); % check if erroneous TTL pulse comes at end of chunk (i.e. end of unique TTL file) by find err pulses with rem(pulse_idx,n_pulse_per_chunk) = 0
@@ -104,7 +108,7 @@ if out_of_order
     if length(pulse_idx) == length(out_of_order_correction)
         pulse_idx = pulse_idx + out_of_order_correction;
     else
-        disp('correction of different length that pulses');
+        disp('correction of different length than pulses');
         keyboard;
     end
 end
