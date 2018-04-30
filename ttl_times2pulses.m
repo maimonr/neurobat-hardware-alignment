@@ -62,7 +62,11 @@ function [pulse_idx, pulse_time, err_pulses] = ttl_times2pulses(times,pulse_dt,c
 %%%
 manual_bad_err_corr = 1;
 check_loop_twice = 0;
-unique_ttls_dir = 'C:\Users\phyllo\Documents\Maimon\misc\nlg_alignment\unique_ttls\';
+if strcmp(getenv('USER'), 'elie')
+    unique_ttls_dir = '/Volumes/JulieBatsDrive/';
+else
+    unique_ttls_dir = 'C:\Users\phyllo\Documents\Maimon\misc\nlg_alignment\unique_ttls\';
+end
 ttl_diffs = diff(times);
 chunk_times = [times(1) times(ttl_diffs>pulse_dt) times(1)]; % time points that are at the end of each TTL pulse train WHY times(1) at the end??
 diffs_chunk = ttl_diffs(ttl_diffs>pulse_dt); % durations of all inter-pulse train intervals in the recording
