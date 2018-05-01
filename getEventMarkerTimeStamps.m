@@ -1,7 +1,8 @@
 function eventMarkers = getEventMarkerTimeStamps(fName)
-
-dateYear = regexp(fName,'(?<=neurologger_recording)\d{4}','match');
-dateYear = str2double(dateYear{1});
+% retrieving year of that recording (cannot extract this from the xml file,
+% so getting this from the folder name
+Ind_v = strfind(fName, 'video');
+dateYear = str2double(fName(Ind_v + (-5:1:-2)));
 xmlStruct = parseXML(fName);
 data = xmlStruct.Children;
 markers = arrayfun(@(x) strcmpi(x.Name,'eventmarker'),data);
