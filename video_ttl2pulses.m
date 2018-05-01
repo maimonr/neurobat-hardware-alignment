@@ -1,4 +1,10 @@
 function [pulse_idx, pulse_time] = video_ttl2pulses(eventMarkers,pulse_dt)
+if strcmp(getenv('USER'), 'elie')
+    unique_ttls_dir = '/Volumes/JulieBatsDrive/';
+else
+    unique_ttls_dir = 'C:\Users\phyllo\Documents\Maimon\misc\nlg_alignment\unique_ttls\';
+end
+
 pulse_edges_per_digit = 2;
 times = [eventMarkers.TimeString];
 ttl_diffs = seconds(diff(times));
@@ -18,8 +24,7 @@ end
 chunk_lengths = cellfun(@length,chunks);
 pulse_time = cellfun(@(x) x(1),chunks);
 
-unique_ttls_dir = 'C:\Users\phyllo\Documents\Maimon\misc\nlg_alignment\unique_ttls\';
-unique_ttl_info = load([unique_ttls_dir 'unique_ttl_params.mat'],'n_pulse_per_chunk','n_chunk','delay','fs');
+unique_ttl_info = load(fullfile(unique_ttls_dir, 'unique_ttl_params.mat'),'n_pulse_per_chunk','n_chunk','delay','fs');
 chunk_delay = unique_ttl_info.delay/unique_ttl_info.fs;
 
 inter_file_diffs = unique_ttl_info.n_pulse_per_chunk:(unique_ttl_info.n_pulse_per_chunk):n_chunks;
