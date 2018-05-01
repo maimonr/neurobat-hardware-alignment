@@ -51,14 +51,14 @@ correct_loop = true;
 save_options_parameters_CD_figure = 1;
 %%%
 
-video_dir = [base_dir 'video' filesep 'Camera '  num2str(cameraNum) filesep];
+video_dir = fullfile(base_dir, 'video', ['Camera '  num2str(cameraNum)]);
 
-video_files = dir([video_dir '*.mp4']);
+video_files = dir(fullfile(video_dir, '*.mp4'));
 n_video_files = length(video_files);
 eventMarkers = cell(1,n_video_files);
 
 for f = 1:n_video_files
-    video_fname = [video_files(f).folder filesep video_files(f).name];
+    video_fname = fullfile(video_files(f).folder, video_files(f).name);
         
     xmlFName = [video_fname(1:end-3) 'xml'];
     eventMarkers{f} = getEventMarkerTimeStamps(xmlFName);
@@ -83,8 +83,9 @@ for s = 1:2
         elseif numel(session_string_pos) == 0
             display(['couldn''t find session ' start_end{s} ' string in event file, choose index of events to use as session ' start_end{s}]);
         end
+        session_string_pos_old =session_string_pos;
         keyboard;
-        session_string_pos = input('input index into variable event_types_and_details');
+        session_string_pos = input(sprintf('input index for %s into variable event_types_and_details, choose from %d %d %d %d %d %d', start_end{s}, session_string_pos_old));
     end
     session_start_and_end(s) = event_timestamps_usec(session_string_pos);
 end
