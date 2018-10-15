@@ -207,8 +207,14 @@ elseif length(loop_rep_idx) == 1
     check_loop_twice = 0;
 else
     disp('multiple potential loop points found');
-    keyboard;
-    loop_rep_idx = input('input index(ices) of variable ''pulse_idx'' corresponding to last pulse before looping');
+    try
+        assert(~any(mod(loop_rep_idx,n_pulse_per_chunk*n_chunk)))
+    catch
+        disp(['loop points at ' num2str(loop_rep_idx)])
+        disp('loop points out of order, enter loop point idxs')
+        keyboard
+        loop_rep_idx = input('input correct loop point idxs');
+    end
     if length(loop_rep_idx) > 1
         for loop = loop_rep_idx
             pulse_idx(loop+1:end) = pulse_idx(loop+1:end) + pulse_idx(loop) - (pulse_idx(loop+1)-1);
