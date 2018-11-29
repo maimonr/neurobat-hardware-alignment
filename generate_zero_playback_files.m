@@ -41,11 +41,11 @@ function generate_zero_playback_files(varargin)
 %                                           default: 1h
 %               'FileDuration':     time covered by a single wav file in min, set to 6min by default
 %               'InterPulseTrainInterval': Time in seconds between 2 pulse
-%                                                       train onsets, default value set at 15s
+%                                                       train onsets, default value set at 5s
 %               'InterPulseInterval': Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
 %               'TTLCode':  A string indicating how the TTL should be encoded. 'LSB' = last significant beat (avisoft configuration)
 %                                   'Value' = exact wav vector value (matlab-soundmexpro-motu configuration)
-%               'Path':     A sting indicating where the wav files should be
+%               'Path':     A string indicating where the wav files should be
 %                              generated. Default=pwd
 %               
 %%%

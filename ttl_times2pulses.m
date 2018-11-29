@@ -194,6 +194,9 @@ figure;
 hold on
 plot(pulse_idx_orig,'rx');
 plot(pulse_idx);
+xlabel('pulse rank')
+ylabel('pulse index')
+legend('original pulse indices', 'indices after correction')
 end
 
 function [pulse_idx, check_loop_twice] = check_loop(pulse_idx,unique_ttls_dir)
