@@ -1,11 +1,13 @@
-function [shared_nlg_pulse_times, shared_audio_pulse_times, total_samples_by_file, first_nlg_pulse_time, first_audio_pulse_time] = align_avi_to_nlg(base_dir,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,wav_file_nums,session_strings,varargin)
+function [shared_nlg_pulse_times, shared_audio_pulse_times, total_samples_by_file, first_nlg_pulse_time, first_audio_pulse_time] ...
+    = align_avi_to_nlg(audio_dir,nlg_dir,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,wav_file_nums,session_strings,varargin)
 %%
 % Function to correct for clock drift between avisoft audio recordings and
 % NLG neural recordings.
 %
 % INPUT:
-% base_dir: base directory of experiment. This script expects this
-% directory to contain the subfolders 'audio\ch1\' and 'nlxformat\'.
+% audio_dir: directory with .wav files that include TTL pulses to align
+%
+% nlg_dir: directory with EVENT file that includes TTL pulses to align
 %
 % ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop: see help for
 % ttl_times2pulses.m
@@ -40,11 +42,10 @@ function [shared_nlg_pulse_times, shared_audio_pulse_times, total_samples_by_fil
 % that is used for synchronization arrived. Used to align audio and NLG
 % times before scaling by estimated clock differences.
 %%%
-fs_wav = 250e3 + 21; % add in 21 to correct for difference between nominal avisoft clock time and actual clock time (value determined empirically)
+fs_wav = 250e3; % add in 21 to correct for difference between nominal avisoft clock time and actual clock time (value determined empirically)
 avi_wav_bits = 16; % number of bits in each sample of avisoft data
 wav2bit_factor = 2^(avi_wav_bits-1); % factor to convert .WAV data to bits readable by 'bitand' below
 
-audio_dir = [base_dir 'audio\ch1\']; % where the audio .WAV files are stored
 wav_files = dir([audio_dir '*.wav']); % all .WAV files in directory
 wav_file_nums = find(cellfun(@(x) ismember(str2num(x(end-7:end-4)),wav_file_nums),{wav_files.name})); % extract only requested .WAV files
 audio_time_din = [];
@@ -54,6 +55,8 @@ nlg_off_by_day = 0;
 nlg_event_time_corr = (60*60*24)*1e6;
 
 save_options_parameters_CD_figure = 1;
+
+nlg_ttl_str = 'pin number 1';
 
 if ~isempty(varargin)
     out_of_order_correction = varargin{1};
@@ -83,8 +86,9 @@ else
 end
 %%
 
-eventfile = [base_dir 'nlxformat\EVENTS.mat']; % load file with TTL status info
-load(eventfile);
+eventfile = dir([nlg_dir '*EVENTS.mat']); % load file with TTL status info
+assert(length(eventfile)==1)
+load(fullfile(eventfile.folder,eventfile.name));
 
 session_start_and_end = zeros(1,2);
 start_end = {'start','end'};
@@ -111,7 +115,7 @@ end
 event_types_and_details = event_types_and_details((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
 event_timestamps_usec = event_timestamps_usec((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
 
-din = cellfun(@(x) ~isempty(strfind(x,'Digital in')),event_types_and_details); % extract which lines in EVENTS correspond to TTL status changes
+din = cellfun(@(x) contains(x,nlg_ttl_str),event_types_and_details); % extract which lines in EVENTS correspond to TTL status changes
 nlg_time_din = 1e-3*event_timestamps_usec(din)'; % find times (ms) when TTL status changes
 
 if out_of_order
