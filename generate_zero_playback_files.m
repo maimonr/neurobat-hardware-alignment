@@ -41,11 +41,15 @@ function generate_zero_playback_files(varargin)
 %                                           default: 1h
 %               'FileDuration':     time covered by a single wav file in min, set to 6min by default
 %               'InterPulseTrainInterval': Time in seconds between 2 pulse
-%                                                       train onsets, default value set at 5s
+%                                          train onsets, default value set at 5s
 %               'InterPulseInterval': Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
+%               'StartOffset': Time in seconds after which the TTL pulses
+%                               should be encoded in the first file.
+%                               default is 0. The first pulse train occurs
+%                               after StartOffset seconds and InterPulseInterval ms
 %               'TTLCode':  A string indicating how the TTL should be encoded. 'LSB' = last significant beat (avisoft configuration)
 %                                   'Value' = exact wav vector value (matlab-soundmexpro-motu configuration)
-%               'Path':     A string indicating where the wav files should be
+%               'Path':     A sting indicating where the wav files should be
 %                              generated. Default=pwd
 %               
 %%%
@@ -54,7 +58,7 @@ FIG=0; % set to 1 to see debugging plot
 
 %% Determining input arguments
 % Sorting input arguments
-Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode', 'Path', 'Stereo'};
+Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval','StartOffset', 'TTLCode', 'Path', 'Stereo'};
 
 % Calculating default values of input arguments
 FS=1e6; % nominal sampling rate of player (avisoft: 1MHz; Motu soundcard: 192000Hz );
@@ -62,12 +66,13 @@ TotalDuration = 1; % total time covered by playback files, start to finish in ho
 FileDuration = 6; % time covered by a single wav file in mins, set to 6min by default
 IPTI = 5; % Time in seconds between 2 pulse train onsets  
 IPI = 15; % Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
+StartOffset = 0; % Time in second after which TTL pulses should be written in the file default is none
 TTLCode = 'LSB'; % How the TTL should be encoded LSB = last significant beat (avisoft configuration) Value = exact wav vector value (matlab-soundmexpro-motu configuration)
 Out_Path = pwd;
 
 % Get input arguments
-Dflts  = {FS TotalDuration FileDuration IPTI IPI TTLCode Out_Path};
-[FS, TotalDuration, FileDuration, IPTI, IPI, TTLCode, Out_Path] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
+Dflts  = {FS TotalDuration FileDuration IPTI IPI StartOffset TTLCode Out_Path};
+[FS, TotalDuration, FileDuration, IPTI, IPI, StartOffset, TTLCode, Out_Path] = internal.stats.parseArgs(Pnames,Dflts,varargin{:});
 
 % Defining the number of files and their length
 TotalDuration_samp = TotalDuration*3600*FS; 
@@ -80,7 +85,8 @@ Base_ttl_length = ceil(FS*1e-3); % maximum resolution of Deuteron loggers is 1ms
 Min_ttl_length  = 5; % set to 5ms due to Deuteron hardware limitations
 IPTI_samp = IPTI*FS; % interval between pulse trains in sample units
 IPI_samp = IPI*Base_ttl_length; % interval between pulses within individual pulse trains in sample units
-PulseTrain_position = 1:IPTI_samp:FileDuration_samp; % exact position of pulse trains in sample units
+StartOffset_samp = StartOffset*FS; % Offset at the beginning of the file if desired
+PulseTrain_position = (1+StartOffset_samp):IPTI_samp:FileDuration_samp; % exact position of pulse trains in sample units
 if PulseTrain_position(end)>=(FileDuration_samp - N_ttl_digits*(IPI_samp + (Min_ttl_length+9)*Base_ttl_length))
     PulseTrain_position = PulseTrain_position(1:(end-1)); % discarding the last pulse train that most likely would not have time to be fully encoded
 end
