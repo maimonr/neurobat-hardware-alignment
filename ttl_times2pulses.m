@@ -60,7 +60,7 @@ function [pulse_idx, pulse_time, err_pulses] = ttl_times2pulses(times,pulse_dt,c
 %
 % Maimon Rose 9/2/16, further comented by Julie E Elie
 %%%
-manual_bad_err_corr = 1;
+manual_bad_err_corr = 0;
 check_loop_twice = 0;
 if strcmp(getenv('USER'), 'elie')
     unique_ttls_dir = '/Volumes/JulieBatsDrive/';
@@ -194,6 +194,9 @@ figure;
 hold on
 plot(pulse_idx_orig,'rx');
 plot(pulse_idx);
+xlabel('pulse rank')
+ylabel('pulse index')
+legend('original pulse indices', 'indices after correction')
 end
 
 function [pulse_idx, check_loop_twice] = check_loop(pulse_idx,unique_ttls_dir)

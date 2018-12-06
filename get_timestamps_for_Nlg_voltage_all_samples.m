@@ -28,10 +28,22 @@
 % whose elements are the time stamps for corresponding samples in
 % sample_indices
 
-function timestamps_usec=get_timestamps_for_Nlg_voltage_all_samples(nSamp,indices_of_first_samples,timestamps_of_first_samples_usec,sampling_period_usec)
+function timestamps_usec=get_timestamps_for_Nlg_voltage_all_samples(nSamp,indices_of_first_samples,timestamps_of_first_samples_usec,sampling_period_usec,logger_transceiver_CD_data)
 timestamps_usec=nan(1,nSamp); % initialize an array of NaNs the same size as sample_indices
 indices_of_first_samples = [indices_of_first_samples nSamp];
 for file_i=1:length(indices_of_first_samples)-1 % for each of the Nlg .DAT files
     idx = indices_of_first_samples(file_i):indices_of_first_samples(file_i+1);
     timestamps_usec(idx)=timestamps_of_first_samples_usec(file_i)+((0:length(idx)-1)*sampling_period_usec); % time stamp of a requested sample = time stamp of the first sample in that file + number of sampling periods since that first sample * sampling period
 end
+
+if nargin > 4 && ~isempty(logger_transceiver_CD_data)
+    Estimated_CD = zeros(1,nSamp);
+    if strcmp(logger_transceiver_CD_data.Clock_difference_estimation, 'fit')
+        slope_and_intercept=polyfit((logger_transceiver_CD_data.CD_logger_stamps-mean(logger_transceiver_CD_data.CD_logger_stamps))/std(logger_transceiver_CD_data.CD_logger_stamps),logger_transceiver_CD_data.CD_sec, 1); % reduce magnitude of input for numerical stability
+        Estimated_CD = 1e6 * polyval(slope_and_intercept,(timestamps_usec-mean(logger_transceiver_CD_data.CD_logger_stamps))/std(logger_transceiver_CD_data.CD_logger_stamps));
+    elseif strcmp(logger_transceiver_CD_data.Clock_difference_estimation, 'interpolation')
+        Estimated_CD = interp1(logger_transceiver_CD_data.CD_logger_stamps, logger_transceiver_CD_data.CD_sec*1e6, timestamps_usec,'linear','extrap');
+    end
+    timestamps_usec = timestamps_usec - Estimated_CD;
+end
+

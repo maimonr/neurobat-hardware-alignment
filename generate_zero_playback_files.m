@@ -35,17 +35,17 @@ function generate_zero_playback_files(varargin)
 
 % This function takes the following input specified as ('parameter1',
 % value1, 'parameter2', value2...)
-% Input:    'FS':   nominal sampling rate of player (avisoft: 1,000,093Hz; Motu
-%                       soundcard: 192000Hz ), default = 1,000,093Hz
+% Input:    'FS':   nominal sampling rate of player (avisoft: 1MHz; Motu
+%                       soundcard: 192000Hz ), default = 1MHz
 %               'TotalDuration':   total time covered by playback files, start to finish in hours
 %                                           default: 1h
 %               'FileDuration':     time covered by a single wav file in min, set to 6min by default
 %               'InterPulseTrainInterval': Time in seconds between 2 pulse
-%                                                       train onsets, default value set at 15s
+%                                                       train onsets, default value set at 5s
 %               'InterPulseInterval': Time in ms between 2 pulses in a pulse train  (set to 15ms due to Deuteron hardware limitations)
 %               'TTLCode':  A string indicating how the TTL should be encoded. 'LSB' = last significant beat (avisoft configuration)
 %                                   'Value' = exact wav vector value (matlab-soundmexpro-motu configuration)
-%               'Path':     A sting indicating where the wav files should be
+%               'Path':     A string indicating where the wav files should be
 %                              generated. Default=pwd
 %               
 %%%
@@ -57,7 +57,7 @@ FIG=0; % set to 1 to see debugging plot
 Pnames = {'FS','TotalDuration', 'FileDuration', 'InterPulseTrainInterval', 'InterPulseInterval', 'TTLCode', 'Path', 'Stereo'};
 
 % Calculating default values of input arguments
-FS=1000093; % nominal sampling rate of player (avisoft: 1 000 093Hz; Motu soundcard: 192000Hz );
+FS=1e6; % nominal sampling rate of player (avisoft: 1MHz; Motu soundcard: 192000Hz );
 TotalDuration = 1; % total time covered by playback files, start to finish in hours
 FileDuration = 6; % time covered by a single wav file in mins, set to 6min by default
 IPTI = 5; % Time in seconds between 2 pulse train onsets  
