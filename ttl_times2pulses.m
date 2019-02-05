@@ -202,6 +202,16 @@ end
 function [pulse_idx, check_loop_twice] = check_loop(pulse_idx,unique_ttls_dir)
 load([unique_ttls_dir 'unique_ttl_params.mat'],'n_pulse_per_chunk','n_chunk');
 loop_rep_idx = find(pulse_idx==n_pulse_per_chunk*n_chunk);
+expected_num_rep = floor(length(pulse_idx)/(n_pulse_per_chunk*n_chunk));
+
+if length(loop_rep_idx) ~= expected_num_rep
+    fprintf('Expected %d repetitions, %d repetitions found \n',expected_num_rep,length(loop_rep_idx))
+    disp(['loop points at ' num2str(loop_rep_idx)])
+    keyboard
+    loop_rep_idx = input('input correct loop point idxs');
+    pulse_idx(loop_rep_idx) = n_pulse_per_chunk*n_chunk;
+end
+
 if isempty(loop_rep_idx)
     check_loop_twice = 1;
     disp('no loop found!');
@@ -209,7 +219,6 @@ elseif length(loop_rep_idx) == 1
     pulse_idx(loop_rep_idx+1:end) = pulse_idx(loop_rep_idx+1:end) + pulse_idx(loop_rep_idx);
     check_loop_twice = 0;
 else
-    disp('multiple potential loop points found');
     try
         assert(~any(mod(loop_rep_idx,n_pulse_per_chunk*n_chunk)))
     catch
@@ -220,7 +229,9 @@ else
     end
     if length(loop_rep_idx) > 1
         for loop = loop_rep_idx
-            pulse_idx(loop+1:end) = pulse_idx(loop+1:end) + pulse_idx(loop) - (pulse_idx(loop+1)-1);
+            if length(pulse_idx)>loop
+                pulse_idx(loop+1:end) = pulse_idx(loop+1:end) + pulse_idx(loop) - (pulse_idx(loop+1)-1);
+            end
         end
     else
         pulse_idx(loop_rep_idx+1:end) = pulse_idx(loop_rep_idx+1:end) + pulse_idx(loop_rep_idx);

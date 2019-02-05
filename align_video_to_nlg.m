@@ -1,4 +1,4 @@
-function [shared_nlg_pulse_times, shared_video_pulse_times, first_nlg_pulse_time, first_video_pulse_time] = align_video_to_nlg(base_dir,cameraNum,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,session_strings,varargin)
+function [shared_nlg_pulse_times, shared_video_pulse_times, first_nlg_pulse_time, first_video_pulse_time] = align_video_to_nlg(video_dir,event_fname,cameraNum,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,session_strings,varargin)
 %%
 % Function to correct for clock drift between avisoft audio recordings and
 % NLG neural recordings.
@@ -50,9 +50,7 @@ end
 save_options_parameters_CD_figure = 1;
 %%%
 
-video_dir = [base_dir 'video\Camera '  num2str(cameraNum) filesep];
-
-video_files = dir([video_dir '*.mp4']);
+video_files = dir(fullfile(video_dir,['Camera ' num2str(cameraNum) '*.mp4']));
 n_video_files = length(video_files);
 eventMarkers = cell(1,n_video_files);
 
@@ -60,7 +58,9 @@ for f = 1:n_video_files
     video_fname = [video_files(f).folder filesep video_files(f).name];
         
     xmlFName = [video_fname(1:end-3) 'xml'];
-    eventMarkers{f} = getEventMarkerTimeStamps(xmlFName);
+    if exist(xmlFName,'file')
+        eventMarkers{f} = getEventMarkerTimeStamps(xmlFName);
+    end
     
 end
 eventMarkers = [eventMarkers{:}];
@@ -68,8 +68,7 @@ eventMarkers = [eventMarkers{:}];
 [video_pulse, video_pulse_times] = video_ttl2pulses(eventMarkers,ttl_pulse_dt/1e3);
 %%
 
-eventfile = [base_dir 'nlxformat\EVENTS.mat']; % load file with TTL status info
-load(eventfile);
+load(event_fname);
 
 session_start_and_end = zeros(1,2);
 start_end = {'start','end'};

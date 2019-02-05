@@ -46,7 +46,7 @@ fs_wav = 250e3; % add in 21 to correct for difference between nominal avisoft cl
 avi_wav_bits = 16; % number of bits in each sample of avisoft data
 wav2bit_factor = 2^(avi_wav_bits-1); % factor to convert .WAV data to bits readable by 'bitand' below
 
-wav_files = dir([audio_dir '*.wav']); % all .WAV files in directory
+wav_files = dir(fullfile(audio_dir,'*.wav')); % all .WAV files in directory
 wav_file_nums = find(cellfun(@(x) ismember(str2num(x(end-7:end-4)),wav_file_nums),{wav_files.name})); % extract only requested .WAV files
 audio_time_din = [];
 total_samples = 0;
@@ -67,13 +67,13 @@ end
 
 for w = 1:max(wav_file_nums) % run through all requested .WAV files and extract audio data and TTL status at each sample
     if ismember(w,wav_file_nums)
-        data = audioread([audio_dir wav_files(w).name]); % load audio data
+        data = audioread(fullfile(audio_dir,wav_files(w).name)); % load audio data
         ttl_status = bitand(data*wav2bit_factor + wav2bit_factor,1); % read TTL status off least significant bit of data
         audio_time_din = [audio_time_din (1e3*(total_samples + find(sign(diff(ttl_status))~=0)')/fs_wav)];
         total_samples_by_file(w) = length(data);
         total_samples = total_samples + total_samples_by_file(w);
     else
-        audio_info_struct = audioinfo([audio_dir wav_files(w).name]);
+        audio_info_struct = audioinfo(fullfile(audio_dir,wav_files(w).name));
         total_samples_by_file(w) = audio_info_struct.TotalSamples;
         total_samples = total_samples + total_samples_by_file(w);
     end
@@ -86,7 +86,7 @@ else
 end
 %%
 
-eventfile = dir([nlg_dir '*EVENTS.mat']); % load file with TTL status info
+eventfile = dir(fullfile(nlg_dir,'*EVENTS.mat')); % load file with TTL status info
 assert(length(eventfile)==1)
 load(fullfile(eventfile.folder,eventfile.name));
 
@@ -111,7 +111,7 @@ if nlg_off_by_day
     event_timestamps_usec = event_timestamps_usec - nlg_event_time_corr;
 end
 
-% extract only relevant TTL status changes
+%% extract only relevant TTL status changes
 event_types_and_details = event_types_and_details((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
 event_timestamps_usec = event_timestamps_usec((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
 
