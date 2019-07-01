@@ -1,5 +1,5 @@
 function [shared_nlg_pulse_times, shared_audio_pulse_times, total_samples_by_file, first_nlg_pulse_time, first_audio_pulse_time] ...
-    = align_avi_to_nlg(audio_dir,nlg_dir,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,wav_file_nums,session_strings,varargin)
+    = align_avi_to_nlg(audio_dir,nlg_dir,corr_pulse_err,correct_end_off,correct_loop,session_strings,varargin)
 %%
 % Function to correct for clock drift between avisoft audio recordings and
 % NLG neural recordings.
@@ -42,28 +42,30 @@ function [shared_nlg_pulse_times, shared_audio_pulse_times, total_samples_by_fil
 % that is used for synchronization arrived. Used to align audio and NLG
 % times before scaling by estimated clock differences.
 %%%
-fs_wav = 250e3; % add in 21 to correct for difference between nominal avisoft clock time and actual clock time (value determined empirically)
+
+pnames = {'fs_wav','wav_file_nums','nlg_off_by_day','out_of_order_correction'};
+dflts  = {250e3,[],false,[]};
+[fs_wav,wav_file_nums,nlg_off_by_day,out_of_order_correction] = internal.stats.parseArgs(pnames,dflts,varargin{:});
+
 avi_wav_bits = 16; % number of bits in each sample of avisoft data
 wav2bit_factor = 2^(avi_wav_bits-1); % factor to convert .WAV data to bits readable by 'bitand' below
 
 wav_files = dir(fullfile(audio_dir,'*.wav')); % all .WAV files in directory
-wav_file_nums = find(cellfun(@(x) ismember(str2num(x(end-7:end-4)),wav_file_nums),{wav_files.name})); % extract only requested .WAV files
+if ~isempty(wav_file_nums)
+    wav_file_nums = find(cellfun(@(x) ismember(str2num(x(end-7:end-4)),wav_file_nums),{wav_files.name})); % extract only requested .WAV files
+else
+    wav_file_nums = 1:length(wav_files);
+end
 audio_time_din = [];
 total_samples = 0;
 total_samples_by_file = zeros(1,length(wav_files));
-nlg_off_by_day = 0;
-nlg_event_time_corr = (60*60*24)*1e6;
 
 save_options_parameters_CD_figure = 1;
 
 nlg_ttl_str = 'pin number 1';
 
-if ~isempty(varargin)
-    out_of_order_correction = varargin{1};
-    out_of_order = 1;
-else
-    out_of_order = 0;
-end
+out_of_order = ~isempty(out_of_order_correction);
+
 
 for w = 1:max(wav_file_nums) % run through all requested .WAV files and extract audio data and TTL status at each sample
     if ismember(w,wav_file_nums)
@@ -79,10 +81,12 @@ for w = 1:max(wav_file_nums) % run through all requested .WAV files and extract 
     end
 end
 
+ % extract TTL pulses and time
+
 if out_of_order
-    [audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,out_of_order_correction); % extract TTL pulses and time
+    [audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
 else
-    [audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop); % extract TTL pulses and time
+    [audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop); % extract TTL pulses and time
 end
 %%
 
@@ -108,6 +112,7 @@ for s = 1:2
 end
 
 if nlg_off_by_day
+    nlg_event_time_corr = (60*60*24)*1e6;
     event_timestamps_usec = event_timestamps_usec - nlg_event_time_corr;
 end
 
@@ -119,14 +124,14 @@ din = cellfun(@(x) contains(x,nlg_ttl_str),event_types_and_details); % extract w
 nlg_time_din = 1e-3*event_timestamps_usec(din)'; % find times (ms) when TTL status changes
 
 if out_of_order
-    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,out_of_order_correction); % extract TTL pulses and time
+    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
 else
-    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop); % extract TTL pulses and time
+    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop); % extract TTL pulses and time
 end
 
 %% synchronize audio --> NLG
 if length(unique(nlg_pulse))/length(nlg_pulse) ~= 1 || length(unique(audio_pulses))/length(audio_pulses) ~= 1 
-    display('repeated pulses!');
+    disp('repeated pulses!');
     keyboard;
 end
 
