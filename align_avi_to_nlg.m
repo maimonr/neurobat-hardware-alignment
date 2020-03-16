@@ -47,87 +47,19 @@ pnames = {'fs_wav','wav_file_nums','nlg_off_by_day','out_of_order_correction'};
 dflts  = {250e3,[],false,[]};
 [fs_wav,wav_file_nums,nlg_off_by_day,out_of_order_correction] = internal.stats.parseArgs(pnames,dflts,varargin{:});
 
-avi_wav_bits = 16; % number of bits in each sample of avisoft data
-wav2bit_factor = 2^(avi_wav_bits-1); % factor to convert .WAV data to bits readable by 'bitand' below
-
-wav_files = dir(fullfile(audio_dir,'*.wav')); % all .WAV files in directory
-if ~isempty(wav_file_nums)
-    wav_file_nums = find(cellfun(@(x) ismember(str2num(x(end-7:end-4)),wav_file_nums),{wav_files.name})); % extract only requested .WAV files
-else
-    wav_file_nums = 1:length(wav_files);
-end
-audio_time_din = [];
-total_samples = 0;
-total_samples_by_file = zeros(1,length(wav_files));
-
 save_options_parameters_CD_figure = 1;
-
-nlg_ttl_str = 'pin number 1';
-
-out_of_order = ~isempty(out_of_order_correction);
-
-
-for w = 1:max(wav_file_nums) % run through all requested .WAV files and extract audio data and TTL status at each sample
-    if ismember(w,wav_file_nums)
-        data = audioread(fullfile(audio_dir,wav_files(w).name)); % load audio data
-        ttl_status = bitand(data*wav2bit_factor + wav2bit_factor,1); % read TTL status off least significant bit of data
-        audio_time_din = [audio_time_din (1e3*(total_samples + find(sign(diff(ttl_status))~=0)')/fs_wav)];
-        total_samples_by_file(w) = length(data);
-        total_samples = total_samples + total_samples_by_file(w);
-    else
-        audio_info_struct = audioinfo(fullfile(audio_dir,wav_files(w).name));
-        total_samples_by_file(w) = audio_info_struct.TotalSamples;
-        total_samples = total_samples + total_samples_by_file(w);
-    end
-end
+nlg_ttl_str = 'Digital input port status';
 
  % extract TTL pulses and time
 
-if out_of_order
-    [audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
-else
-    [audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop); % extract TTL pulses and time
-end
+[audio_time_din, total_samples_by_file] = get_avi_ttl_pulses(audio_dir,wav_file_nums,fs_wav);
+[audio_pulses, audio_pulse_times] = ttl_times2pulses(audio_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction);
+
 %%
 
-eventfile = dir(fullfile(nlg_dir,'*EVENTS.mat')); % load file with TTL status info
-assert(length(eventfile)==1)
-load(fullfile(eventfile.folder,eventfile.name));
+nlg_time_din = get_nlg_ttl_pulses(nlg_dir,session_strings,nlg_ttl_str,nlg_off_by_day);
+[nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction);
 
-session_start_and_end = zeros(1,2);
-start_end = {'start','end'};
-
-for s = 1:2
-    session_string_pos = find(cellfun(@(x) ~isempty(strfind(x,session_strings{s})),event_types_and_details));
-    if numel(session_string_pos) ~= 1
-        if numel(session_string_pos) > 1
-            display(['more than one session ' start_end{s} ' string in event file, choose index of events to use as session ' start_end{s}]);
-        elseif numel(session_string_pos) == 0
-            display(['couldn''t find session ' start_end{s} ' string in event file, choose index of events to use as session ' start_end{s}]);
-        end
-        keyboard;
-        session_string_pos = input('input index into variable event_types_and_details');
-    end
-    session_start_and_end(s) = event_timestamps_usec(session_string_pos);
-end
-
-if nlg_off_by_day
-    nlg_event_time_corr = (60*60*24)*1e6;
-    event_timestamps_usec = event_timestamps_usec - nlg_event_time_corr;
-end
-
-%% extract only relevant TTL status changes
-event_types_and_details = event_types_and_details((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
-event_timestamps_usec = event_timestamps_usec((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
-
-din = cellfun(@(x) contains(x,nlg_ttl_str),event_types_and_details); % extract which lines in EVENTS correspond to TTL status changes
-nlg_time_din = 1e-3*event_timestamps_usec(din)'; % find times (ms) when TTL status changes
-
-if out_of_order
-    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
-else
-    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop); % extract TTL pulses and time
-end
 
 %% synchronize audio --> NLG
 if length(unique(nlg_pulse))/length(nlg_pulse) ~= 1 || length(unique(audio_pulses))/length(audio_pulses) ~= 1 
