@@ -1,8 +1,12 @@
 function nlg_time_din = get_nlg_ttl_pulses(nlg_dir,session_strings,nlg_ttl_str,nlg_off_by_day)
 
-eventfile = dir(fullfile(nlg_dir,'*EVENTS.mat')); % load file with TTL status info
-assert(length(eventfile)==1)
-eventData = load(fullfile(eventfile.folder,eventfile.name));
+if exist(nlg_dir,'file')
+    eventData = load(nlg_dir);
+else
+    eventfile = dir(fullfile(nlg_dir,'*EVENTS.mat')); % load file with TTL status info
+    assert(length(eventfile)==1)
+    eventData = load(fullfile(eventfile.folder,eventfile.name));
+end
 
 session_start_and_end = zeros(1,2);
 start_end = {'start','end'};

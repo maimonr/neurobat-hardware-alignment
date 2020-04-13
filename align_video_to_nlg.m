@@ -40,15 +40,11 @@ function [shared_nlg_pulse_times, shared_video_pulse_times, first_nlg_pulse_time
 % that is used for synchronization arrived. Used to align audio and NLG
 % times before scaling by estimated clock differences.
 
-if ~isempty(varargin)
-    out_of_order_correction = varargin{1};
-    out_of_order = 1;
-else
-    out_of_order = 0;
-end
+pnames = {'nlg_off_by_day','out_of_order_correction'};
+dflts  = {false,[]};
+[nlg_off_by_day,out_of_order_correction] = internal.stats.parseArgs(pnames,dflts,varargin{:});
 
 save_options_parameters_CD_figure = 1;
-%%%
 
 video_files = dir(fullfile(video_dir,['Camera ' num2str(cameraNum) '*.mp4']));
 n_video_files = length(video_files);
@@ -68,41 +64,12 @@ eventMarkers = [eventMarkers{:}];
 [video_pulse, video_pulse_times] = video_ttl2pulses(eventMarkers,ttl_pulse_dt/1e3);
 %%
 
-load(event_fname);
-
-session_start_and_end = zeros(1,2);
-start_end = {'start','end'};
-
-for s = 1:2
-    session_string_pos = find(cellfun(@(x) ~isempty(strfind(x,session_strings{s})),event_types_and_details));
-    if numel(session_string_pos) ~= 1
-        if numel(session_string_pos) > 1
-            display(['more than one session ' start_end{s} ' string in event file, choose index of events to use as session ' start_end{s}]);
-        elseif numel(session_string_pos) == 0
-            display(['couldn''t find session ' start_end{s} ' string in event file, choose index of events to use as session ' start_end{s}]);
-        end
-        keyboard;
-        session_string_pos = input('input index into variable event_types_and_details');
-    end
-    session_start_and_end(s) = event_timestamps_usec(session_string_pos);
-end
-
-% extract only relevant TTL status changes
-event_types_and_details = event_types_and_details((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
-event_timestamps_usec = event_timestamps_usec((event_timestamps_usec >= session_start_and_end(1)) & (event_timestamps_usec <= session_start_and_end(2)));
-
-din = cellfun(@(x) contains(x,'Digital in'),event_types_and_details); % extract which lines in EVENTS correspond to TTL status changes
-nlg_time_din = 1e-3*event_timestamps_usec(din)'; % find times (ms) when TTL status changes
-
-if out_of_order
-    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,out_of_order_correction); % extract TTL pulses and time
-else
-    [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop); % extract TTL pulses and time
-end
+nlg_time_din = get_nlg_ttl_pulses(event_fname,session_strings,nlg_ttl_str,nlg_off_by_day);
+[nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction);
 
 %% synchronize video --> NLG
 if length(unique(nlg_pulse))/length(nlg_pulse) ~= 1 || length(unique(video_pulse))/length(video_pulse) ~= 1 
-    display('repeated pulses!');
+    disp('repeated pulses!');
     keyboard;
 end
 
