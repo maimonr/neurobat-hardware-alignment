@@ -1,4 +1,4 @@
-function [shared_nlg_pulse_times, shared_video_pulse_times, first_nlg_pulse_time, first_video_pulse_time] = align_video_to_nlg(video_dir,event_fname,cameraNum,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,session_strings,varargin)
+function [shared_nlg_pulse_times, shared_video_pulse_times, first_nlg_pulse_time, first_video_pulse_time] = align_video_to_nlg_NIdaq(video_dir,event_fname,cameraNum,ttl_pulse_dt,corr_pulse_err,correct_end_off,correct_loop,session_strings,varargin)
 %%
 % Function to correct for clock drift between avisoft audio recordings and
 % NLG neural recordings.
