@@ -4,7 +4,13 @@ if isfile(nlg_dir)
     eventData = load(nlg_dir);
 else
     eventfile = dir(fullfile(nlg_dir,'*EVENTS.mat')); % load file with TTL status info
-    assert(length(eventfile)==1)
+    try
+        assert(length(eventfile)==1)
+    catch
+        [fname,nlg_dir] = uigetfile(nlg_dir,'select events file');
+        eventfile = dir(nlg_dir,fname);
+        assert(length(eventfile)==1)
+    end
     eventData = load(fullfile(eventfile.folder,eventfile.name));
 end
 
