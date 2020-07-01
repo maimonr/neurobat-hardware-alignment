@@ -52,7 +52,7 @@ nlg_ttl_str = 'Digital input port status';
 
  % extract TTL pulses and time
  
-vid_time_din = get_vid_ttl_pulses(vid_dir,audio_chunk_size);
+vid_time_din = get_vid_ttl_pulses_from_aud(vid_dir,audio_chunk_size);
 vid_time_din = milliseconds(vid_time_din - vid_time_din(1));
 [vid_pulses, vid_pulse_times] = ttl_times2pulses(vid_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
 

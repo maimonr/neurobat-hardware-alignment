@@ -1,6 +1,6 @@
 function nlg_time_din = get_nlg_ttl_pulses(nlg_dir,session_strings,nlg_ttl_str,nlg_off_by_day)
 
-if exist(nlg_dir,'file')
+if isfile(nlg_dir)
     eventData = load(nlg_dir);
 else
     eventfile = dir(fullfile(nlg_dir,'*EVENTS.mat')); % load file with TTL status info
@@ -9,7 +9,7 @@ else
 end
 
 session_start_and_end = zeros(1,2);
-start_end = {'start','end'};
+start_end = {'start','stop'};
 
 for s = 1:2
     session_string_pos = find(cellfun(@(x) ~isempty(strfind(x,session_strings{s})),eventData.event_types_and_details));
