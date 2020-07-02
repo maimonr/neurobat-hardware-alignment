@@ -125,78 +125,19 @@ if out_of_order
     end
 end
 
-err_pulses = intersect(find(pulse_idx-[pulse_idx(1)-1 pulse_idx(1:end-1)]~=1),... recalculate err_pulses after removing 'end_off' pulses
-    find(pulse_idx-[pulse_idx(2:end) pulse_idx(end)+1]~=-1));
-
 if correct_loop
     [pulse_idx, check_loop_twice] = check_loop(pulse_idx,unique_ttls_dir);
 end
 
-err_pulses = intersect(find(pulse_idx-[pulse_idx(1)-1 pulse_idx(1:end-1)]~=1),... recalculate err_pulses after removing 'loop' pulses
-    find(pulse_idx-[pulse_idx(2:end) pulse_idx(end)+1]~=-1));
-
-if pulse_idx(end) - pulse_idx(end-1) ~=1
-    err_pulses = [err_pulses length(pulse_idx)];
-end
-
 if correct_err
-    if sum(diff(err_pulses)<2)~=0
-        disp([num2str(sum(diff(err_pulses)<2)) ' adjacent error pulses!']);
-        if manual_bad_err_corr
-            bad_err = err_pulses(diff(err_pulses)<2);
-            err_pulses = setdiff(err_pulses,bad_err);
-            try
-                pulse_idx(err_pulses) = pulse_idx(err_pulses-1)+1;
-            catch
-                pulse_idx(err_pulses) = pulse_idx(err_pulses+1)-1;
-            end
-            keyboard;
-            for err = 1:length(bad_err)
-                return_to_code = input('return to code?');
-                if return_to_code == 1
-                    keyboard;
-                end
-                replace_bad_err = input('replace (1) bad error pulse or remove (2) bad error pulse and surrounding pulses?');
-                if replace_bad_err == 1
-                    display(['bad error pulse value and adjacent values: ' num2str(pulse_idx([bad_err(err)-1 bad_err(err) bad_err(err)+1]))]);
-                    pulse_idx(bad_err(err)) = input(['replace pulse idx of ' num2str(pulse_idx(bad_err(err))) ' with what value?']);
-                elseif replace_bad_err == 2
-                    bad_err_to_remove = [bad_err(err) bad_err(err)+1 bad_err(err)-1];
-                    bad_err_to_remove = bad_err_to_remove(bad_err_to_remove>1 & bad_err_to_remove<=length(pulse_idx));
-                    pulse_idx(bad_err_to_remove) = [];
-                    pulse_time(bad_err_to_remove) = [];
-                end
-            end
-        else
-            bad_err = err_pulses(diff(err_pulses)<2);
-            err_pulses = setdiff(err_pulses,bad_err);
-            try
-                pulse_idx(err_pulses) = pulse_idx(err_pulses-1)+1;
-            catch
-                pulse_idx(err_pulses) = pulse_idx(err_pulses+1)-1;
-            end
-            for err = 1:length(bad_err)
-                bad_err_to_remove = [bad_err bad_err+1 bad_err-1];
-                bad_err_to_remove = bad_err_to_remove(bad_err_to_remove>1 & bad_err_to_remove<=length(pulse_idx));
-                pulse_idx(bad_err_to_remove) = [];
-                pulse_time(bad_err_to_remove) = [];
-            end
-        end
-    else
-        try
-            pulse_idx(err_pulses) = pulse_idx(err_pulses-1)+1;
-        catch
-            pulse_idx(err_pulses) = pulse_idx(err_pulses+1)-1;
-        end
-    end
+    [pulse_idx, pulse_time] = correct_lone_pulse_errors(pulse_idx,pulse_time,manual_bad_err_corr);
+    [pulse_idx, pulse_time] = correct_out_of_order_pulse_errors(pulse_idx,pulse_time);
 end
 
 if check_loop_twice
     disp('checking for loop after correcting for errors');
-    [pulse_idx, ~] = check_loop(pulse_idx,unique_ttls_dir);
-    
+    [pulse_idx, ~] = check_loop(pulse_idx,unique_ttls_dir); 
 end
-
 
 figure;
 hold on
@@ -248,3 +189,78 @@ else
 end
 end
 
+function [pulse_idx, pulse_time] = correct_lone_pulse_errors(pulse_idx,pulse_time,manual_bad_err_corr)
+
+err_pulses = intersect(find(pulse_idx-[pulse_idx(1)-1 pulse_idx(1:end-1)]~=1),... 
+    find(pulse_idx-[pulse_idx(2:end) pulse_idx(end)+1]~=-1));
+
+if pulse_idx(end) - pulse_idx(end-1) ~=1
+    err_pulses = [err_pulses length(pulse_idx)];
+end
+
+if sum(diff(err_pulses)<2)~=0
+    disp([num2str(sum(diff(err_pulses)<2)) ' adjacent error pulses!']);
+    if manual_bad_err_corr
+        bad_err = err_pulses([diff(err_pulses)<2 false] | [false fliplr(abs(diff(fliplr(err_pulses)))<2)]);
+        err_pulses = setdiff(err_pulses,bad_err);
+        try
+            pulse_idx(err_pulses) = pulse_idx(err_pulses-1)+1;
+        catch
+            pulse_idx(err_pulses) = pulse_idx(err_pulses+1)-1;
+        end
+        keyboard;
+        for err_k = 1:length(bad_err)
+            return_to_code = input('return to code?');
+            if return_to_code == 1
+                keyboard;
+            end
+            replace_bad_err = input('replace (1) bad error pulse or remove (2) bad error pulse and surrounding pulses?');
+            if replace_bad_err == 1
+                display(['bad error pulse value and adjacent values: ' num2str(pulse_idx([bad_err(err_k)-1 bad_err(err_k) bad_err(err_k)+1]))]);
+                pulse_idx(bad_err(err_k)) = input(['replace pulse idx of ' num2str(pulse_idx(bad_err(err_k))) ' with what value?']);
+            elseif replace_bad_err == 2
+                bad_err_to_remove = [bad_err(err_k) bad_err(err_k)+1 bad_err(err_k)-1];
+                bad_err_to_remove = bad_err_to_remove(bad_err_to_remove>1 & bad_err_to_remove<=length(pulse_idx));
+                pulse_idx(bad_err_to_remove) = [];
+                pulse_time(bad_err_to_remove) = [];
+            end
+        end
+    else
+        bad_err = err_pulses([diff(err_pulses)<2 false] | [false fliplr(abs(diff(fliplr(err_pulses)))<2)]);
+        err_pulses = setdiff(err_pulses,bad_err);
+        try
+            pulse_idx(err_pulses) = pulse_idx(err_pulses-1)+1;
+        catch
+            pulse_idx(err_pulses) = pulse_idx(err_pulses+1)-1;
+        end
+        bad_err_to_remove = [];
+        for err_k = 1:length(bad_err)
+            bad_err_to_remove = [bad_err_to_remove bad_err(err_k) bad_err(err_k)+1 bad_err(err_k)-1]; %#ok<AGROW>
+        end
+        bad_err_to_remove = bad_err_to_remove(bad_err_to_remove>1 & bad_err_to_remove<=length(pulse_idx));
+        bad_err_to_remove = unique(bad_err_to_remove);
+        pulse_idx(bad_err_to_remove) = [];
+        pulse_time(bad_err_to_remove) = [];
+    end
+else
+    try
+        pulse_idx(err_pulses) = pulse_idx(err_pulses-1)+1;
+    catch
+        pulse_idx(err_pulses) = pulse_idx(err_pulses+1)-1;
+    end
+end
+
+end
+
+function [pulse_idx, pulse_time] = correct_out_of_order_pulse_errors(pulse_idx,pulse_time)
+
+err_pulses = find(diff(pulse_idx)<1,1);
+
+while ~isempty(err_pulses)
+    err_to_remove = [err_pulses-1 err_pulses err_pulses+1];
+    pulse_idx(err_to_remove) = [];
+    pulse_time(err_to_remove) = [];
+    err_pulses = find(diff(pulse_idx)<1,1);
+end
+
+end

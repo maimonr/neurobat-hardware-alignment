@@ -76,6 +76,10 @@ first_nlg_pulse_time = shared_nlg_pulse_times(1);
 first_vid_pulse_time = shared_vid_pulse_times(1);
 
 clock_differences_at_pulses = (shared_nlg_pulse_times - first_nlg_pulse_time) - (shared_vid_pulse_times - first_vid_pulse_time); % determine difference between NLG and avisoft timestamps when pulses arrived
+clock_diff_range = median(clock_differences_at_pulses(end-10:end)) - median(clock_differences_at_pulses(1:10));
+err_differences_idx = find(diff(abs(clock_differences_at_pulses)) > clock_diff_range) + 1;
+shared_vid_pulse_times(err_differences_idx) = [];
+shared_nlg_pulse_times(err_differences_idx) = [];
 
 figure
 hold on
