@@ -53,7 +53,6 @@ nlg_ttl_str = 'Digital input port status';
  % extract TTL pulses and time
  
 vid_time_din = get_vid_ttl_pulses_from_aud(vid_dir,audio_chunk_size);
-vid_time_din = milliseconds(vid_time_din - vid_time_din(1));
 [vid_pulses, vid_pulse_times] = ttl_times2pulses(vid_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
 
 nlg_time_din = get_nlg_ttl_pulses(nlg_dir,session_strings,nlg_ttl_str,nlg_off_by_day);
@@ -75,20 +74,21 @@ shared_vid_pulse_times = vid_pulse_times(shared_pulse_audio_idx);
 first_nlg_pulse_time = shared_nlg_pulse_times(1);
 first_vid_pulse_time = shared_vid_pulse_times(1);
 
-clock_differences_at_pulses = (shared_nlg_pulse_times - first_nlg_pulse_time) - (shared_vid_pulse_times - first_vid_pulse_time); % determine difference between NLG and avisoft timestamps when pulses arrived
+clock_differences_at_pulses = (shared_nlg_pulse_times - first_nlg_pulse_time) - milliseconds(shared_vid_pulse_times - first_vid_pulse_time); % determine difference between NLG and avisoft timestamps when pulses arrived
 clock_diff_range = median(clock_differences_at_pulses(end-10:end)) - median(clock_differences_at_pulses(1:10));
 err_differences_idx = find(diff(abs(clock_differences_at_pulses)) > clock_diff_range) + 1;
+clock_differences_at_pulses(err_differences_idx) = [];
 shared_vid_pulse_times(err_differences_idx) = [];
 shared_nlg_pulse_times(err_differences_idx) = [];
 
 figure
 hold on
 plot(shared_vid_pulse_times-first_vid_pulse_time,clock_differences_at_pulses,'.-');
-xlabel('Incoming Audio Pulse Times')
-ylabel('Difference between NLG clock and avisoft clock');
+xlabel('Incoming Video Pulse Times')
+ylabel('Difference between NLG clock and video clock');
 legend('real clock difference');
 
 if save_options_parameters_CD_figure
-    saveas(gcf,fullfile(vid_dir,'CD_correction_avisoft_nlg.fig'))
+    saveas(gcf,fullfile(vid_dir,'CD_correction_video_nlg.fig'))
 end
 end

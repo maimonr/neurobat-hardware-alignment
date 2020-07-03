@@ -75,13 +75,24 @@ pnames = {'pulse_dt','min_pulse_dt','correct_err','correct_end_off','correct_loo
 dflts  = {4e3,0.1,1,0,0,0,0,5,[],unique_ttls_dir_dflt};
 [pulse_dt,min_pulse_dt,correct_err,correct_end_off,correct_loop,check_loop_twice,manual_bad_err_corr,min_pulse_value,out_of_order_correction,unique_ttls_dir] = internal.stats.parseArgs(pnames,dflts,varargin{:});
 
-ttl_diffs = diff(times);
+if isdatetime(times)
+    ttl_diffs = milliseconds(diff(times));
+else
+    ttl_diffs = diff(times);
+end
+
 ttl_diff_idx = [true ttl_diffs > min_pulse_dt];
-
 times = times(ttl_diff_idx);
-ttl_diffs = diff(times);
 
-chunk_times = [times(1) times(ttl_diffs>pulse_dt) times(1)]; % time points that are at the end of each TTL pulse train WHY times(1) at the end??
+if isdatetime(times)
+    ttl_diffs = milliseconds(diff(times));
+    extraMillisecond = milliseconds(1);
+else
+    ttl_diffs = diff(times);
+    extraMillisecond = 1;
+end
+
+chunk_times = [times(1) times(ttl_diffs>pulse_dt) times(end)]; % time points that are at the end of each TTL pulse train 
 diffs_chunk = ttl_diffs(ttl_diffs>pulse_dt); % durations of all inter-pulse train intervals in the recording
 chunks = cell(1,length(diffs_chunk)); % will contain all the time point of TTL status change for each the set of (inter-pulse train interval + pulse train)
 
@@ -90,7 +101,7 @@ out_of_order = ~isempty(out_of_order_correction);
 %% Loop through detected  sets of (inter-pulse train interval + pulse train) and retrieve pulse index
 for chunk = 1:length(diffs_chunk) % we could potentially miss the last TTL pulse if there was less than 4s of recording after it?
     chunk_on = chunk_times(chunk);
-    chunk_off = chunk_times(chunk+1) + 1; % This +1ms could be replaced by <= in the following lines: (times<=chunk_off)?
+    chunk_off = chunk_times(chunk+1) + extraMillisecond; % This +1ms could be replaced by <= in the following lines: (times<=chunk_off)?
     if chunk == 1
         chunks{chunk} = times((times>=chunk_on) & (times<chunk_off));
     else
@@ -99,7 +110,11 @@ for chunk = 1:length(diffs_chunk) % we could potentially miss the last TTL pulse
 end
 pulse_time = cellfun(@(x) x(1),chunks); % time of first rising edge in each pulse train
 display(sum(~ismember(pulse_time,times))) % display if these time points do not belong to the times where TTL status changed was detected
-chunk_diffs = cellfun(@(x) round(diff(x)),chunks,'UniformOutput',0); % durations between each raising or falling edges in the pulse train
+if isdatetime(times)
+    chunk_diffs = cellfun(@(x) round(milliseconds(diff(x))),chunks,'UniformOutput',0); % durations between each raising or falling edges in the pulse train
+else
+    chunk_diffs = cellfun(@(x) round(diff(x)),chunks,'UniformOutput',0); % durations between each raising or falling edges in the pulse train
+end
 pulse_idx = cellfun(@(x) str2double(regexprep(num2str(x(1:2:length(x)) - min_pulse_value),'[^\w'']','')),chunk_diffs); % Pulse indices
 pulse_idx_orig = pulse_idx; % save these pulses indices before applying further checks
 
