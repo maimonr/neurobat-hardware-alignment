@@ -108,6 +108,7 @@ for chunk = 1:length(diffs_chunk) % we could potentially miss the last TTL pulse
         chunks{chunk} = times((times>chunk_on) & (times<chunk_off));
     end
 end
+chunks = chunks(cellfun(@length,chunks)>1);
 pulse_time = cellfun(@(x) x(1),chunks); % time of first rising edge in each pulse train
 display(sum(~ismember(pulse_time,times))) % display if these time points do not belong to the times where TTL status changed was detected
 if isdatetime(times)
