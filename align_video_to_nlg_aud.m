@@ -52,8 +52,9 @@ nlg_ttl_str = 'Digital input port status';
 
  % extract TTL pulses and time
  
-vid_time_din = get_vid_ttl_pulses_from_aud(vid_dir,audio_chunk_size);
-[vid_pulses, vid_pulse_times] = ttl_times2pulses(vid_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
+[vid_time_din,vid_time_din_sample] = get_vid_ttl_pulses_from_aud(vid_dir,audio_chunk_size);
+[vid_pulses, ~ ,used_time_idx] = ttl_times2pulses(vid_time_din_sample,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction); 
+vid_pulse_times = vid_time_din(used_time_idx);
 
 nlg_time_din = get_nlg_ttl_pulses(nlg_dir,session_strings,nlg_ttl_str,nlg_off_by_day);
 [nlg_pulse, nlg_pulse_times] = ttl_times2pulses(nlg_time_din,'correct_err',corr_pulse_err,'correct_end_off',correct_end_off,'correct_loop',correct_loop,'out_of_order_correction',out_of_order_correction);

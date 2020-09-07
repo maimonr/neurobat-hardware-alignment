@@ -1,4 +1,4 @@
-function [pulse_idx, pulse_time, err_pulses] = ttl_times2pulses(times,varargin)
+function [pulse_idx, pulse_time, used_time_idx] = ttl_times2pulses(times,varargin)
 %%%
 % Decodes spacing between TTL pulses into unique numbers
 % INPUTS
@@ -81,8 +81,11 @@ else
     ttl_diffs = diff(times);
 end
 
+used_time_idx = 1:length(times);
+
 ttl_diff_idx = [true ttl_diffs > min_pulse_dt];
 times = times(ttl_diff_idx);
+used_time_idx = used_time_idx(ttl_diff_idx);
 
 if isdatetime(times)
     ttl_diffs = milliseconds(diff(times));
@@ -94,7 +97,7 @@ end
 
 chunk_times = [times(1) times(ttl_diffs>pulse_dt) times(end)]; % time points that are at the end of each TTL pulse train 
 diffs_chunk = ttl_diffs(ttl_diffs>pulse_dt); % durations of all inter-pulse train intervals in the recording
-chunks = cell(1,length(diffs_chunk)); % will contain all the time point of TTL status change for each the set of (inter-pulse train interval + pulse train)
+[chunks,idx_chunks] = deal(cell(1,length(diffs_chunk))); % will contain all the time point of TTL status change for each the set of (inter-pulse train interval + pulse train)
 
 out_of_order = ~isempty(out_of_order_correction);
 
@@ -103,14 +106,19 @@ for chunk = 1:length(diffs_chunk) % we could potentially miss the last TTL pulse
     chunk_on = chunk_times(chunk);
     chunk_off = chunk_times(chunk+1) + extraMillisecond; % This +1ms could be replaced by <= in the following lines: (times<=chunk_off)?
     if chunk == 1
-        chunks{chunk} = times((times>=chunk_on) & (times<chunk_off));
+        current_chunk_idx = (times>=chunk_on) & (times<chunk_off);
+        chunks{chunk} = times(current_chunk_idx);
+        idx_chunks{chunk} = used_time_idx(current_chunk_idx);
     else
-        chunks{chunk} = times((times>chunk_on) & (times<chunk_off));
+        current_chunk_idx = (times>chunk_on) & (times<chunk_off);
+        chunks{chunk} = times(current_chunk_idx);
+        idx_chunks{chunk} = used_time_idx(current_chunk_idx);
     end
 end
 chunks = chunks(cellfun(@length,chunks)>1);
 pulse_time = cellfun(@(x) x(1),chunks); % time of first rising edge in each pulse train
-display(sum(~ismember(pulse_time,times))) % display if these time points do not belong to the times where TTL status changed was detected
+used_time_idx = cellfun(@(x) x(1),idx_chunks);
+
 if isdatetime(times)
     chunk_diffs = cellfun(@(x) round(milliseconds(diff(x))),chunks,'UniformOutput',0); % durations between each raising or falling edges in the pulse train
 else
@@ -130,6 +138,7 @@ if correct_end_off % end of 'zero signal' TTL file may have erroneous TTL pulse 
     end_offs = union(end_offs,find(isnan(pulse_idx)));
     pulse_idx(end_offs) = []; % remove those pulses
     pulse_time(end_offs) = [];
+    used_time_idx(end_offs) = false;
 end
 
 if out_of_order
@@ -146,8 +155,8 @@ if correct_loop
 end
 
 if correct_err
-    [pulse_idx, pulse_time] = correct_lone_pulse_errors(pulse_idx,pulse_time,manual_bad_err_corr);
-    [pulse_idx, pulse_time] = correct_out_of_order_pulse_errors(pulse_idx,pulse_time);
+    [pulse_idx, pulse_time, used_time_idx] = correct_lone_pulse_errors(pulse_idx,pulse_time,used_time_idx,manual_bad_err_corr);
+    [pulse_idx, pulse_time, used_time_idx] = correct_out_of_order_pulse_errors(pulse_idx,pulse_time,used_time_idx);
 end
 
 if check_loop_twice
@@ -205,7 +214,7 @@ else
 end
 end
 
-function [pulse_idx, pulse_time] = correct_lone_pulse_errors(pulse_idx,pulse_time,manual_bad_err_corr)
+function [pulse_idx, pulse_time, used_time_idx] = correct_lone_pulse_errors(pulse_idx,pulse_time,used_time_idx,manual_bad_err_corr)
 
 err_pulses = intersect(find(pulse_idx-[pulse_idx(1)-1 pulse_idx(1:end-1)]~=1),... 
     find(pulse_idx-[pulse_idx(2:end) pulse_idx(end)+1]~=-1));
@@ -239,6 +248,7 @@ if sum(diff(err_pulses)<2)~=0
                 bad_err_to_remove = bad_err_to_remove(bad_err_to_remove>1 & bad_err_to_remove<=length(pulse_idx));
                 pulse_idx(bad_err_to_remove) = [];
                 pulse_time(bad_err_to_remove) = [];
+                used_time_idx(bad_err_to_remove) = [];
             end
         end
     else
@@ -257,6 +267,7 @@ if sum(diff(err_pulses)<2)~=0
         bad_err_to_remove = unique(bad_err_to_remove);
         pulse_idx(bad_err_to_remove) = [];
         pulse_time(bad_err_to_remove) = [];
+        used_time_idx(bad_err_to_remove) = [];
     end
 else
     try
@@ -268,7 +279,7 @@ end
 
 end
 
-function [pulse_idx, pulse_time] = correct_out_of_order_pulse_errors(pulse_idx,pulse_time)
+function [pulse_idx, pulse_time, used_time_idx] = correct_out_of_order_pulse_errors(pulse_idx,pulse_time,used_time_idx)
 
 err_pulses = find(diff(pulse_idx)<1,1);
 
@@ -276,6 +287,7 @@ while ~isempty(err_pulses)
     err_to_remove = [err_pulses-1 err_pulses err_pulses+1];
     pulse_idx(err_to_remove) = [];
     pulse_time(err_to_remove) = [];
+    used_time_idx(err_to_remove) = [];
     err_pulses = find(diff(pulse_idx)<1,1);
 end
 
