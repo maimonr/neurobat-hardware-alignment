@@ -115,6 +115,7 @@ for chunk = 1:length(diffs_chunk) % we could potentially miss the last TTL pulse
         idx_chunks{chunk} = used_time_idx(current_chunk_idx);
     end
 end
+idx_chunks = idx_chunks(cellfun(@length,chunks)>1);
 chunks = chunks(cellfun(@length,chunks)>1);
 pulse_time = cellfun(@(x) x(1),chunks); % time of first rising edge in each pulse train
 used_time_idx = cellfun(@(x) x(1),idx_chunks);
