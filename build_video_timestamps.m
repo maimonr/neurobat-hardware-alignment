@@ -1,11 +1,31 @@
-function frame_ts_info = build_video_timestamps(video_dir,cameraName,video2nlg)
+function frame_ts_info = build_video_timestamps(video_dir,cameraName,video2nlg,varargin)
 
-delimiter = ',';
-importFormatSpec = '%f%s%[^\n\r]';
-metadataDateFormatSpec = {'MM/dd/yyyy HH:mm:ss:SSSSSS','yy:MM:dd HH:mm:ss SSSSSS'};
+pnames = {'recType'};
+dflts  = {'seq'};
+[recType] = internal.stats.parseArgs(pnames,dflts,varargin{:});
+
+switch recType
+    case 'seq'
+        metadataDateFormatSpec = {'MM/dd/yyyy HH:mm:ss:SSSSSS','yy:MM:dd HH:mm:ss SSSSSS'};
+        delimiter = ',';
+        importFormatSpec = '%f%s%[^\n\r]';
+        nHeader = 0;
+        EOLChar = '\n';
+        vid_file_ext = '.mp4';
+        metadata_file_ext = '.ts.csv';
+    case 'avi'
+        metadataDateFormatSpec = {'yy:MM:dd HH:mm:ss.SSS'};
+        delimiter = '\t';
+        importFormatSpec = '%f%s';
+        nHeader = 2;
+        EOLChar = '\n';
+        vid_file_ext = '.avi';
+        metadata_file_ext = '_Timers.txt';
+end
+
 format_spec_idx = 1;
 
-video_files = dir(fullfile(video_dir, ['*' cameraName '*.mp4']));
+video_files = dir(fullfile(video_dir, ['*' cameraName '*' vid_file_ext]));
 n_video_files = length(video_files);
 video_fnames = cell(1,n_video_files);
 video_files_frame_numbers = cell(1,n_video_files);
@@ -15,9 +35,10 @@ frame_file_idx = cell(1,n_video_files);
 for f = 1:n_video_files
     video_fnames{f} = [video_files(f).folder filesep video_files(f).name];
     
-    metaDataFName = [video_fnames{f}(1:end-3) 'ts.csv'];
+    metaDataFName = [video_fnames{f}(1:end-length(vid_file_ext)) metadata_file_ext];
     fileID = fopen(metaDataFName,'r');
-    metadataArray = textscan(fileID, importFormatSpec, 'Delimiter', delimiter,  'ReturnOnError', false);
+    metadataArray = textscan(fileID, importFormatSpec, 'Delimiter', delimiter,...
+        'HeaderLines',nHeader,'EndOfLine',EOLChar,'ReturnOnError', false);
     fclose(fileID);
     frameTimes = metadataArray{:, 2};
     

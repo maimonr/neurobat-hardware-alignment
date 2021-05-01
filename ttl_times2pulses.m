@@ -139,7 +139,7 @@ if correct_end_off % end of 'zero signal' TTL file may have erroneous TTL pulse 
     end_offs = union(end_offs,find(isnan(pulse_idx)));
     pulse_idx(end_offs) = []; % remove those pulses
     pulse_time(end_offs) = [];
-    used_time_idx(end_offs) = false;
+    used_time_idx(end_offs) = [];
 end
 
 if out_of_order
